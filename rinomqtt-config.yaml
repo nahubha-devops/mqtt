@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rinomqtt-config
+data:
+  conf.yml: |
+    storage-way: 0
+    bridge-way: 0
+    pprof-enable: false
+    node-name: mqtt-1
+    bind-addr: 0.0.0.0
+    bind-port: 1883
+    
+    rocketmq:
+      name-server: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
+      access-key: protco
+      secret-key: protco123456
+    
+    auth:
+      way: 1
+      datasource: 0
+      blacklist-path: ./config/blacklist.yml
+    
+    mqtt:
+      tcp: :1883
+      ws: :1884
+      http: :8080
+      options:
+        client-write-buffer-size: 1024
+        client-read-buffer-size: 1024
+        inline-client: true
+        capabilities:
+          minimum-protocol-version: 3
+          maximum-qos: 1
+    
+    log:
+      enable: true
+      format: 0
+      output: 0
+      level: 0
+  blacklist.yml: |
+    auth:
+      - username: protco_dev
+        password: password
+        allow: true
+      - remote: 127.0.0.1
+        allow: true
+    acl:
+      - username: protco_dev
+        filters:
+          "rlink/#": 3
+          "app/#": 3
+          "temp/#": 3
+          "register/#": 3
+          "iotdebug/#": 3
+          "$SHARE/rino/rlink/#": 3
+          "$share/rino/rlink/#": 3
+          "$share/rino/product/#": 3
+          "$share/rino/register/#": 3

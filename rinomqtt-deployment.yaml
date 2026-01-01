@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rinomqtt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rinomqtt
+  template:
+    metadata:
+      labels:
+        app: rinomqtt
+    spec:
+      containers:
+      - name: rinomqtt
+        image: 466897160698.dkr.ecr.ap-south-1.amazonaws.com/mqtt:v3.0.7
+        ports:
+        - containerPort: 1883
+        - containerPort: 1884
+        - containerPort: 8080
+        volumeMounts:
+        - name: config
+          mountPath: /app/config/conf.yml
+          subPath: conf.yml
+        - name: config
+          mountPath: /app/config/blacklist.yml
+          subPath: blacklist.yml
+      volumes:
+      - name: config
+        configMap:
+          name: rinomqtt-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rinomqtt-service
+spec:
+  selector:
+    app: rinomqtt
+  ports:
+  - name: mqtt
+    port: 1883
+    targetPort: 1883
+  - name: ws
+    port: 1884
+    targetPort: 1884
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
