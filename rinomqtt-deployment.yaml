@@ -23,6 +23,12 @@ spec:
           value: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
         - name: NAMESRV_ADDR
           value: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
+        - name: SPRING_CLOUD_STREAM_ROCKETMQ_BINDER_NAME_SERVER
+          value: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
+        - name: SPRING_CLOUD_STREAM_ROCKETMQ_BINDER_ACCESS_KEY
+          value: protco
+        - name: SPRING_CLOUD_STREAM_ROCKETMQ_BINDER_SECRET_KEY
+          value: protco123456
         ports:
         - containerPort: 1883
         - containerPort: 1884
