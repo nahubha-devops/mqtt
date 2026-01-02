@@ -12,11 +12,6 @@ data:
     bind-addr: 0.0.0.0
     bind-port: 1883
     
-    rocketmq:
-      name-server: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
-      access-key: protco
-      secret-key: protco123456
-    
     auth:
       way: 1
       datasource: 0
