@@ -48,12 +48,15 @@ spec:
   selector:
     app: rinomqtt
   ports:
-  - name: mqtt
+  - name: mqtt-legacy
     port: 1883
-    targetPort: 1883
+    targetPort: 2883
+  - name: mqtt
+    port: 2883
+    targetPort: 2883
   - name: ws
-    port: 1884
-    targetPort: 1884
+    port: 2884
+    targetPort: 2884
   - name: http
     port: 8080
     targetPort: 8080
