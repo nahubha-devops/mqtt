@@ -16,6 +16,9 @@ spec:
       containers:
       - name: rinomqtt
         image: 466897160698.dkr.ecr.ap-south-1.amazonaws.com/mqtt:v3.0.7
+        env:
+        - name: ROCKETMQ_NAMESRV_ADDR
+          value: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
         ports:
         - containerPort: 1883
         - containerPort: 1884
