@@ -1,0 +1,182 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-admin-vhost
+  namespace: nginx
+data:
+  # SHARED UPSTREAMS
+  shared-upstreams.conf: |
+    upstream iot_web { server iot-web.apps.svc.cluster.local:80; }
+    upstream admin_web { server admin-web.apps.svc.cluster.local:80; }
+    upstream gateway { server rinoiot-gateway.apps.svc.cluster.local:8100; }
+    upstream xxl_job { server xxl-job-admin.apps.svc.cluster.local:8080; }
+    upstream nacos { server nacos.nacos.svc.cluster.local:8848; }
+    upstream rmqdash { server rocketmq-dashboard.rocketmq.svc.cluster.local:8080; }
+    upstream openapi { server rinoiot-openapi.apps.svc.cluster.local:8400; }
+    upstream developer_docs { server rinoiot-developer-docs.apps.svc.cluster.local:80; }
+    upstream mqtt_broker { server rinomqtt-service.mqtt.svc.cluster.local:1883; }
+    upstream mqtt_ws { server rinomqtt-service.mqtt.svc.cluster.local:2884; }
+    upstream mqtt_auth { server rinoiot-provider-mqtt-access.apps.svc.cluster.local:8106; }
+
+  # IOT SERVER
+  staging-iot.conf: |
+    server {
+        listen 443 ssl http2; listen [::]:443 ssl http2;
+        server_name staging-iot.protco.in;
+        http2 on;
+        ssl_certificate /etc/nginx/ssl/tls.crt;
+        ssl_certificate_key /etc/nginx/ssl/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Permissions-Policy "interest-cohort=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        
+        location / { proxy_pass http://iot_web; }
+        
+        location /xxl-job-admin {
+            proxy_pass http://xxl_job;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 120s;
+            proxy_read_timeout 120s;
+            proxy_buffering off;
+            proxy_buffer_size 128k;
+            proxy_buffers 4 256k;
+            proxy_busy_buffers_size 256k;
+        }
+        
+        location ~ ^/api/business-iot/v1/cloudDoc/getDocById {
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'POST, GET, OPTIONS';
+            if ($request_method = 'OPTIONS') { return 204; }
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_pass http://gateway;
+        }
+        
+        location /api/ {
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'PUT, GET, POST, OPTIONS';
+            add_header 'Access-Control-Allow-Credentials' 'true';
+            add_header 'Access-Control-Allow-Headers' 'Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Auth-Token,language,app_id,client_id,os_name,rino_source,encrypt_type';
+            if ($request_method = 'OPTIONS') { return 204; }
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_pass http://gateway/;
+        }
+        
+        location /nacos {
+            proxy_pass http://nacos;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        
+        location ~ ^/webConfig.json {
+            default_type application/json;
+            return 200 '{"deviceLogSearchApiReplaceMap": { "iot-test.yijian.store": "search-test.yijian.store" }}';
+        }
+    }
+
+  # Admin Server
+  staging-admin.conf: |
+    server {
+        listen 443 ssl http2; listen [::]:443 ssl http2;
+        server_name staging-admin.protco.in;
+        http2 on;
+        ssl_certificate /etc/nginx/ssl/tls.crt;
+        ssl_certificate_key /etc/nginx/ssl/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Permissions-Policy "interest-cohort=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        
+        location = / { return 301 /admin/; }
+        location = /path { return 200 "OK\n"; add_header Content-Type text/plain; }
+        location /admin/ { rewrite ^/admin/(.*)$ /$1 break; proxy_pass http://admin_web; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; }
+        location = /admin { return 301 /admin/; }
+        location /admin/api/ { rewrite ^/admin/api/(.*)$ /api/$1 break; add_header 'Access-Control-Allow-Origin' '*' always; add_header 'Access-Control-Allow-Methods' 'PUT, GET, POST, OPTIONS'; add_header 'Access-Control-Allow-Credentials' 'true'; add_header 'Access-Control-Allow-Headers' 'Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Auth-Token'; if ($request_method = 'OPTIONS') { return 204; } proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; proxy_pass http://gateway/; }
+        location /api/ { add_header 'Access-Control-Allow-Origin' '*' always; add_header 'Access-Control-Allow-Methods' 'PUT, GET, POST, OPTIONS'; add_header 'Access-Control-Allow-Credentials' 'true'; add_header 'Access-Control-Allow-Headers' 'Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Auth-Token'; if ($request_method = 'OPTIONS') { return 204; } proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; proxy_pass http://gateway/; }
+    }
+
+  # MQTT Server with WebSocket Support
+  staging-mqtt.conf: |
+    server {
+        listen 443 ssl http2; listen [::]:443 ssl http2;
+        server_name staging-mqtt.protco.in;
+        http2 on;
+        ssl_certificate /etc/nginx/ssl/tls.crt;
+        ssl_certificate_key /etc/nginx/ssl/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Permissions-Policy "interest-cohort=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        
+        # WebSocket MQTT over SSL (HTTP/1.1 only)
+        location /mqtt {
+            http2 off;
+            proxy_pass http://mqtt_ws;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 86400;
+            proxy_send_timeout 86400;
+            proxy_connect_timeout 60s;
+        }
+        
+        # MQTT Auth API
+        location /auth/ {
+            proxy_pass http://mqtt_auth/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+
+  # Other Services
+  staging-nacos.conf: |
+    server { listen 443 ssl http2; listen [::]:443 ssl http2; server_name staging-nacos.protco.in; http2 on; ssl_certificate /etc/nginx/ssl/tls.crt; ssl_certificate_key /etc/nginx/ssl/tls.key; ssl_protocols TLSv1.2 TLSv1.3; add_header 'Access-Control-Allow-Origin' '*' always; location / { proxy_pass http://nacos; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; } }
+  staging-rmq.conf: |
+    server { listen 443 ssl http2; listen [::]:443 ssl http2; server_name staging-rmq.protco.in; http2 on; ssl_certificate /etc/nginx/ssl/tls.crt; ssl_certificate_key /etc/nginx/ssl/tls.key; ssl_protocols TLSv1.2 TLSv1.3; location / { proxy_pass http://rmqdash; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; proxy_connect_timeout 60s; proxy_send_timeout 60s; proxy_read_timeout 60s; } }
+  staging-rmqdashboard.conf: |
+    server { listen 443 ssl http2; listen [::]:443 ssl http2; server_name staging-rmqdashboard.protco.in; http2 on; ssl_certificate /etc/nginx/ssl/tls.crt; ssl_certificate_key /etc/nginx/ssl/tls.key; ssl_protocols TLSv1.2 TLSv1.3; location / { proxy_pass http://rmqdash; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; proxy_connect_timeout 60s; proxy_send_timeout 60s; proxy_read_timeout 60s; } }
+  staging-docs.conf: |
+    server { listen 443 ssl http2; listen [::]:443 ssl http2; server_name staging-docs.protco.in; http2 on; ssl_certificate /etc/nginx/ssl/tls.crt; ssl_certificate_key /etc/nginx/ssl/tls.key; ssl_protocols TLSv1.2 TLSv1.3; location / { proxy_pass http://developer_docs; proxy_set_header Host $host; } }
+  staging-openapi.conf: |
+    server { listen 443 ssl http2; listen [::]:443 ssl http2; server_name staging-openapi.protco.in; http2 on; ssl_certificate /etc/nginx/ssl/tls.crt; ssl_certificate_key /etc/nginx/ssl/tls.key; ssl_protocols TLSv1.2 TLSv1.3; location / { proxy_pass http://openapi; proxy_set_header Host $host; } }
+  staging-xxljob.conf: |
+    server { listen 443 ssl http2; listen [::]:443 ssl http2; server_name staging-xxljob.protco.in; http2 on; ssl_certificate /etc/nginx/ssl/tls.crt; ssl_certificate_key /etc/nginx/ssl/tls.key; ssl_protocols TLSv1.2 TLSv1.3; location / { proxy_pass http://xxl_job; proxy_connect_timeout 60s; proxy_send_timeout 120s; proxy_read_timeout 120s; proxy_set_header Host $host; } }
+  staging-gateway.conf: |
+    server { listen 443 ssl http2; listen [::]:443 ssl http2; server_name staging-gateway.protco.in; http2 on; ssl_certificate /etc/nginx/ssl/tls.crt; ssl_certificate_key /etc/nginx/ssl/tls.key; ssl_protocols TLSv1.2 TLSv1.3; location / { proxy_pass http://gateway; proxy_set_header Host $host; } }
+  default.conf: |
+    server { listen 443 ssl http2 default_server; listen [::]:443 ssl http2 default_server; server_name _; http2 on; ssl_certificate /etc/nginx/ssl/tls.crt; ssl_certificate_key /etc/nginx/ssl/tls.key; return 404; }
