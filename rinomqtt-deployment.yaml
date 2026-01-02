@@ -19,6 +19,10 @@ spec:
         env:
         - name: ROCKETMQ_NAMESRV_ADDR
           value: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
+        - name: ROCKETMQ_NAME_SERVER
+          value: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
+        - name: NAMESRV_ADDR
+          value: rocketmq-namesrv.rocketmq.svc.cluster.local:9876
         ports:
         - containerPort: 1883
         - containerPort: 1884
