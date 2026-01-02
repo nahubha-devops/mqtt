@@ -4,19 +4,20 @@
 
 1. **Deploy to Kubernetes:**
    ```bash
+   kubectl apply -f namespace.yaml
    kubectl apply -f rinomqtt-config.yaml
    kubectl apply -f rinomqtt-deployment.yaml
    ```
 
 2. **Check deployment:**
    ```bash
-   kubectl get pods -l app=rinomqtt
-   kubectl get svc rinomqtt-service
+   kubectl get pods -l app=rinomqtt -n mqtt
+   kubectl get svc rinomqtt-service -n mqtt
    ```
 
-3. **Get external IP:**
+3. **Get service endpoint:**
    ```bash
-   kubectl get svc rinomqtt-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+   kubectl get svc rinomqtt-service -n mqtt
    ```
 
 ## Connection Details
